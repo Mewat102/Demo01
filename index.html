@@ -1,36 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Google Sheet Test Form</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send Message with Location</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 14px;
+      color: green;
+    }
+  </style>
 </head>
 <body>
-  <h2>Send Data to Google Sheet</h2>
-  <form id="myForm">
-    <input type="text" name="name" placeholder="Your Name" required><br><br>
-    <input type="email" name="email" placeholder="Your Email" required><br><br>
-    <textarea name="message" placeholder="Your Message" required></textarea><br><br>
-    <button type="submit">Submit</button>
-  </form>
+  <div class="container">
+    <h2>Send Message</h2>
+    <form id="msgForm">
+      <input type="text" id="message" placeholder="Enter your message" required>
+      <button type="submit">Send</button>
+    </form>
+    <p id="status"></p>
+  </div>
 
   <script>
-    document.getElementById("myForm").addEventListener("submit", function(e) {
+    const webhookURL = "https://script.google.com/macros/s/AKfycbwzNMvMI7VuA8LPNCScbNfs-qYRfkaMqg_6TBaYC17w_wtbV3a4O5k4noW__NMl3zmtyA/exec";
+    let locationLink = "";
+
+    // Live GPS Location
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      locationLink = `https://maps.google.com/?q=${lat},${lon}`;
+    }, err => {
+      locationLink = "Location not available";
+    });
+
+    document.getElementById("msgForm").addEventListener("submit", function(e) {
       e.preventDefault();
+      const message = document.getElementById("message").value;
 
-      var formData = {
-        name: this.name.value,
-        email: this.email.value,
-        message: this.message.value
-      };
-
-      fetch("https://script.google.com/macros/s/AKfycbwzNMvMI7VuA8LPNCScbNfs-qYRfkaMqg_6TBaYC17w_wtbV3a4O5k4noW__NMl3zmtyA/exec", {
+      fetch(webhookURL, {
         method: "POST",
-        body: JSON.stringify(formData)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: message, location: locationLink })
       })
-      .then(res => res.text())
-      .then(data => {
-        alert("Server response: " + data);
+      .then(() => {
+        document.getElementById("status").innerText = " Message sent!";
+        document.getElementById("status").style.color = "green";
+        document.getElementById("message").value = "";
       })
-      .catch(err => alert("Error: " + err));
+      .catch(() => {
+        document.getElementById("status").innerText = " Error sending message.";
+        document.getElementById("status").style.color = "red";
+      });
     });
   </script>
 </body>
